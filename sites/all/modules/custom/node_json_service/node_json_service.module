@@ -1,0 +1,170 @@
+<?php
+/**
+ * @file
+ */
+
+/**
+ * Implements hook_menu()
+ */
+function node_json_service_menu() {
+  $items = array();
+  $items['page_json/%/%'] = array(
+    'title' => 'Node JSON Service',
+    'description' => 'Provide NODE JSON Service',
+    'page callback' => '_node_json_service_retrieve_node',
+    'access callback' => '_node_json_service_access',
+    'page arguments' => array(1, 2, 'page'),
+    'file' => 'node_json_service.node.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+/**
+ * Access callback for the note resource.
+ *
+ * @param string $op
+ *          The operation that's going to be performed.
+ * @param array $args
+ *          The arguments that will be passed to the callback.
+ * @return bool Whether access is given or not.
+ */
+function _node_json_service_access($op = '', $args = '') {
+  $nodeservice_flag = arg(1);
+  if ($nodeservice_flag == 'node_service') {
+    $siteapikey = arg(2);
+    $nid = arg(3);
+  }
+  else {
+    $siteapikey = arg(1);
+    $nid = arg(2);
+  }
+  if (!empty($siteapikey) && !empty($nid) && variable_get('siteapikey', t('No API Key yet')) == $siteapikey) {
+    $node = node_load($nid);
+    if ($node->type == "page") {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Implements hook_ctools_plugin_api().
+ */
+function node_json_service_ctools_plugin_api($owner, $api) {
+  if ($owner == 'services' && $api == 'services') {
+    return array('version' => 3);
+  }
+}
+
+/**
+ * Implementation of hook_services_resources().
+ */
+function node_json_service_services_resources() {
+  $node_json_service_service = array(
+      'node_service' => array(
+          'retrieve' => array(
+              'help' => 'Prepare node in JSON object',
+              'file' => array(
+                  'file' => 'inc',
+                  'module' => 'node_json_service',
+                  'name' => 'node_json_service.node'
+              ),
+              'callback' => '_node_json_service_retrieve_node',
+              'access callback' => '_node_json_service_access',
+              'access arguments' => array('view'),
+              'access arguments append' => TRUE,
+              'args' => array(
+                  array(
+                      'name' => 'apikey',
+                      'type' => 'string',
+                      'description' => 'The site api key from request URL',
+                      'source' => array('path' => '0'),
+                      'optional' => TRUE,
+                      'default value' => ''
+                  ),
+                  array(
+                      'name' => 'nodeid',
+                      'type' => 'string',
+                      'description' => 'The node nid from request URL',
+                      'source' => array('path' => '1'),
+                      'optional' => TRUE,
+                      'default value' => '0'
+                  ),
+              )
+          )
+      ),
+  );
+
+  return $node_json_service_service;
+}
+
+/**
+ * Triggered when the REST server request a list of supported response formats.
+ *
+ * @param array $formatters
+ *  An associative array of formatter info arrays keyed by type extension. The
+ *  formatter info specifies an array of 'mime types' that corresponds to the
+ *  output format; a 'formatter class' class implements ServicesFormatterInterface
+ *  and is responsible for encoding the output.
+ *
+ * @return void
+ */
+function node_json_service_rest_server_response_formatters_alter(&$formatters) {
+  unset($formatters['xml']);
+  unset($formatters['jsonp']);
+  unset($formatters['php']);
+  unset($formatters['bencode']);
+}
+
+/**
+ * Implements hook_default_services_endpoint().
+ */
+function node_json_service_default_services_endpoint() {
+  $endpoints = array();
+  $endpoint = new stdClass();
+  $endpoint->disabled = FALSE;
+  $endpoint->api_version = 3;
+  $endpoint->name = 'node_json_service';
+  $endpoint->server = 'rest_server';
+  $endpoint->path = 'ws_page_json';
+  $endpoint->authentication = array();
+  $endpoint->server_settings = '';
+  $endpoint->resources = array(
+    'node_service' => array('operations' => array('retrieve' => array('enabled' => 1))),
+  );
+  $endpoint->debug = 0;
+  $endpoints[] = $endpoint;
+  return $endpoints;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter()
+ */
+function node_json_service_form_system_site_information_settings_alter(&$form, &$form_state, $form_id) {
+  $form['site_api_key'] = array(
+    '#type' => 'fieldset',
+    '#title' => t("Site API"),
+  );
+  $form['site_api_key']['siteapikey'] = array(
+    '#type' => 'textfield',
+    '#title' => t("Site API Key"),
+    '#attributes' => array('placeholder' => t('No API Key yet')),
+    '#required' => TRUE,
+    '#default_value' => variable_get('siteapikey', ''),
+  );
+  $form['#submit'] = array_merge($form['#submit'], array('_node_json_service_form_system_site_information_settings_submit'));
+  if (variable_get('siteapikey', '') != '') {
+    $form['actions']['submit']['#value'] = t("Update Configuration");
+  }
+  return $form;
+}
+
+/**
+ * Implements hook_form_FROM_ID_submit()
+ * @param array $form
+ * @param array $form_state
+ */
+function _node_json_service_form_system_site_information_settings_submit($form, &$form_state) {
+  variable_set('siteapikey', $form_state['values']['siteapikey']);
+  drupal_set_message(t("Site API Key has been saved with @siteapikey", array("@siteapikey" => $form_state['values']['siteapikey'])));
+}
