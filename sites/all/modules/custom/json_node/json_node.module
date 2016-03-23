@@ -6,15 +6,15 @@
 /**
  * Implements hook_menu()
  */
-function node_json_service_menu() {
+function json_node_menu() {
   $items = array();
   $items['page_json/%/%'] = array(
     'title' => 'Node JSON Service',
     'description' => 'Provide NODE JSON Service',
-    'page callback' => '_node_json_service_retrieve_node',
-    'access callback' => '_node_json_service_access',
+    'page callback' => '_json_node_retrieve_node',
+    'access callback' => '_json_node_access',
     'page arguments' => array(1, 2, 'page'),
-    'file' => 'node_json_service.node.inc',
+    'file' => 'json_node.node.inc',
     'type' => MENU_NORMAL_ITEM,
   );
   return $items;
@@ -28,7 +28,7 @@ function node_json_service_menu() {
  *          The arguments that will be passed to the callback.
  * @return bool Whether access is given or not.
  */
-function _node_json_service_access($op = '', $args = '') {
+function _json_node_access($op = '', $args = '') {
   $nodeservice_flag = arg(1);
   if ($nodeservice_flag == 'node_service') {
     $siteapikey = arg(2);
@@ -50,7 +50,7 @@ function _node_json_service_access($op = '', $args = '') {
 /**
  * Implements hook_ctools_plugin_api().
  */
-function node_json_service_ctools_plugin_api($owner, $api) {
+function json_node_ctools_plugin_api($owner, $api) {
   if ($owner == 'services' && $api == 'services') {
     return array('version' => 3);
   }
@@ -59,18 +59,18 @@ function node_json_service_ctools_plugin_api($owner, $api) {
 /**
  * Implementation of hook_services_resources().
  */
-function node_json_service_services_resources() {
-  $node_json_service_service = array(
+function json_node_services_resources() {
+  $json_node_service = array(
       'node_service' => array(
           'retrieve' => array(
               'help' => 'Prepare node in JSON object',
               'file' => array(
                   'file' => 'inc',
-                  'module' => 'node_json_service',
-                  'name' => 'node_json_service.node'
+                  'module' => 'json_node',
+                  'name' => 'json_node.node'
               ),
-              'callback' => '_node_json_service_retrieve_node',
-              'access callback' => '_node_json_service_access',
+              'callback' => '_json_node_retrieve_node',
+              'access callback' => '_json_node_access',
               'access arguments' => array('view'),
               'access arguments append' => TRUE,
               'args' => array(
@@ -95,7 +95,7 @@ function node_json_service_services_resources() {
       ),
   );
 
-  return $node_json_service_service;
+  return $json_node_service;
 }
 
 /**
@@ -109,7 +109,7 @@ function node_json_service_services_resources() {
  *
  * @return void
  */
-function node_json_service_rest_server_response_formatters_alter(&$formatters) {
+function json_node_rest_server_response_formatters_alter(&$formatters) {
   unset($formatters['xml']);
   unset($formatters['jsonp']);
   unset($formatters['php']);
@@ -119,14 +119,14 @@ function node_json_service_rest_server_response_formatters_alter(&$formatters) {
 /**
  * Implements hook_default_services_endpoint().
  */
-function node_json_service_default_services_endpoint() {
+function json_node_default_services_endpoint() {
   $endpoints = array();
   $endpoint = new stdClass();
   $endpoint->disabled = FALSE;
   $endpoint->api_version = 3;
-  $endpoint->name = 'node_json_service';
+  $endpoint->name = 'json_node';
   $endpoint->server = 'rest_server';
-  $endpoint->path = 'ws_page_json';
+  $endpoint->path = 'ser_page_json';
   $endpoint->authentication = array();
   $endpoint->server_settings = '';
   $endpoint->resources = array(
@@ -140,7 +140,7 @@ function node_json_service_default_services_endpoint() {
 /**
  * Implements hook_form_FORM_ID_alter()
  */
-function node_json_service_form_system_site_information_settings_alter(&$form, &$form_state, $form_id) {
+function json_node_form_system_site_information_settings_alter(&$form, &$form_state, $form_id) {
   $form['site_api_key'] = array(
     '#type' => 'fieldset',
     '#title' => t("Site API"),
@@ -152,7 +152,7 @@ function node_json_service_form_system_site_information_settings_alter(&$form, &
     '#required' => TRUE,
     '#default_value' => variable_get('siteapikey', ''),
   );
-  $form['#submit'] = array_merge($form['#submit'], array('_node_json_service_form_system_site_information_settings_submit'));
+  $form['#submit'] = array_merge($form['#submit'], array('_json_node_form_system_site_information_settings_submit'));
   if (variable_get('siteapikey', '') != '') {
     $form['actions']['submit']['#value'] = t("Update Configuration");
   }
@@ -164,7 +164,7 @@ function node_json_service_form_system_site_information_settings_alter(&$form, &
  * @param array $form
  * @param array $form_state
  */
-function _node_json_service_form_system_site_information_settings_submit($form, &$form_state) {
+function _json_node_form_system_site_information_settings_submit($form, &$form_state) {
   variable_set('siteapikey', $form_state['values']['siteapikey']);
   drupal_set_message(t("Site API Key has been saved with @siteapikey", array("@siteapikey" => $form_state['values']['siteapikey'])));
 }
